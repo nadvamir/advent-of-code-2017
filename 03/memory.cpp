@@ -42,7 +42,8 @@ std::pair<int, int> get_coords(int number, int circle) {
         return {limit - number + circle, circle};
     }
     // right
-    return {circle, limit - number - circle};
+    limit = limit - e + 1;
+    return {circle, number - limit - circle};
 }
 
 int memory_distance(int number) {
@@ -65,6 +66,7 @@ void test() {
     ASSERT_EQ(edge(2), 5);
 
     ASSERT_EQ(get_coords(2, 1), (std::pair<int, int>(1, 0)));
+    ASSERT_EQ(get_coords(3, 1), (std::pair<int, int>(1, 1)));
     ASSERT_EQ(get_coords(16, 2), (std::pair<int, int>(-1, 2)));
     ASSERT_EQ(get_coords(18, 2), (std::pair<int, int>(-2, 1)));
     ASSERT_EQ(get_coords(24, 2), (std::pair<int, int>(1, -2)));
