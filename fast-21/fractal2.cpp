@@ -6,6 +6,7 @@
 #include <iterator>
 #include <unordered_map>
 #include <cmath>
+#include <chrono>
 #include <cassert>
 
 using Rulebook = std::unordered_map<std::string, std::string>;
@@ -31,8 +32,13 @@ Rulebook read_rule_book(std::istream& is) {
     return rulebook;
 }
 
+long long t_get_size = 0;
 int get_size(const std::string& drawing) {
-    return round(sqrt(drawing.size()));
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto r = round(sqrt(drawing.size()));
+    auto t2 = std::chrono::high_resolution_clock::now();
+    t_get_size += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    return r;
 }
 
 std::string rotate180(std::string drawing) {
@@ -62,8 +68,11 @@ std::string rotate(std::string d) {
     return r;
 }
 
+long long t_get_keys = 0;
 std::vector<std::string> get_keys(std::string d) {
+    auto t1 = std::chrono::high_resolution_clock::now();
     std::vector<std::string> keys;
+    keys.reserve(8);
 
     keys.push_back(d);
     keys.push_back(rotate180(d));
@@ -78,34 +87,42 @@ std::vector<std::string> get_keys(std::string d) {
     d = rotate(d);
     keys.push_back(d);
     keys.push_back(rotate180(d));
+    auto t2 = std::chrono::high_resolution_clock::now();
+    t_get_keys += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     return keys;
 }
 
+long long t_split = 0;
+long long t_split_empty = 0;
+long long t_split_populate = 0;
 std::vector<std::string> split(const std::string& d, size_t N) {
+    auto t1 = std::chrono::high_resolution_clock::now();
     int dN = get_size(d);
     int nparts = dN / N;
     if (nparts == 1) {
         return {d};
     }
 
-    std::vector<std::string> result;
-    
-    // create nparts empty grids
-    for (int i = 0; i < nparts * nparts; ++i) {
-        result.push_back(std::string(N * N, '.'));
-    }
+    auto t3 = std::chrono::high_resolution_clock::now();
+    std::vector<std::string> result(nparts * nparts);
+    auto t4 = std::chrono::high_resolution_clock::now();
+    t_split_empty += std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
 
-    // populate the grid
-    for (int i = 0; i < dN; ++i) {
-        for (int j = 0; j < dN; ++j) {
-            int n = i / N * nparts + j / N;
-            result[n][i % N * N + j % N] = d[i * dN + j];
+    for (int n = 0; n < nparts * nparts; ++n) {
+        result[n].reserve(N * N);
+        for (int i = n / nparts * (dN * N) + n % nparts * N, times = N; times--; i += dN) {
+            result[n] += d.substr(i, N);
         }
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    t_split += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    t_split_populate += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t3).count();
     return result;
 }
 
+long long t_combine = 0;
 std::string combine(const std::vector<std::string>& drawings, int nparts) {
+    auto t1 = std::chrono::high_resolution_clock::now();
     if (nparts == 1) return drawings[0];
 
     std::ostringstream combined;
@@ -116,25 +133,36 @@ std::string combine(const std::vector<std::string>& drawings, int nparts) {
             combined << drawings[n].substr(ii*dN, dN);
         }
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    t_combine += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     return combined.str();
 }
 
+long long t_get_split_size = 0;
 int get_split_size(int size, int divBy) {
+    auto t1 = std::chrono::high_resolution_clock::now();
     if (size == 3) return 3;
     int result = divBy;
 
     while (size % result != 0 || (size / result) % divBy != 0) ++result;
 
+    auto t2 = std::chrono::high_resolution_clock::now();
+    t_get_split_size += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     return size / result;
 }
 
+long long t_rulebook_find = 0;
+long long t_rulebook_insert = 0;
 std::string iteration(Rulebook& rulebook, std::string in, int divBy) {
     const int inSize = get_size(in);
     int splitSize = get_split_size(inSize, divBy);
 
     auto s = split(in, splitSize);
     transform(begin(s), end(s), begin(s), [&](const auto& d) {
+            auto t1 = std::chrono::high_resolution_clock::now();
             const auto ruleIt = rulebook.find(d);
+            auto t2 = std::chrono::high_resolution_clock::now();
+            t_rulebook_find += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
             if (ruleIt != end(rulebook)) {
                 return ruleIt->second;
             }
@@ -144,7 +172,10 @@ std::string iteration(Rulebook& rulebook, std::string in, int divBy) {
     });
 
     const auto combined = combine(s, inSize / splitSize);
+    auto t1 = std::chrono::high_resolution_clock::now();
     rulebook.insert({in, combined});
+    auto t2 = std::chrono::high_resolution_clock::now();
+    t_rulebook_insert += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     return combined;
 }
 
@@ -215,8 +246,28 @@ void test() {
 }
 
 void run() {
+    auto t1 = std::chrono::high_resolution_clock::now();
     auto rules = read_rule_book(std::cin);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Reading took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us.\n";
+
+    auto t3 = std::chrono::high_resolution_clock::now();
     auto drawing = iterate(rules, 18);
+    auto t4 = std::chrono::high_resolution_clock::now();
+    std::cout << "Working took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us.\n";
+
+    std::cout << "Out of which: \n"
+              << "t_get_size=" << t_get_size << "\n"
+              << "t_get_keys=" << t_get_keys << "\n"
+              << "t_split=" << t_split << "\n"
+              << "t_split_empty=" << t_split_empty << "\n"
+              << "t_split_populate=" << t_split_populate << "\n"
+              << "t_combine=" << t_combine << "\n"
+              << "t_get_split_size=" << t_get_split_size << "\n"
+              << "t_rulebook_find=" << t_rulebook_find << "\n"
+              << "t_rulebook_insert=" << t_rulebook_insert << "\n";
     std::cout << num_pixels(drawing) << "\n";
 }
 
