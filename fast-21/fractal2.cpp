@@ -35,11 +35,11 @@ int get_size(const std::string& drawing) {
     return round(sqrt(drawing.size()));
 }
 
-// rotate 180
-/* std::string mirror(std::string drawing) { */
-/*     reverse(begin(drawing), end(drawing)); */
-/*     return drawing; */
-/* } */
+std::string rotate180(std::string drawing) {
+    reverse(begin(drawing), end(drawing));
+    return drawing;
+}
+
 std::string flip(std::string d) {
     std::string f = d;
     int N = get_size(d);
@@ -50,7 +50,6 @@ std::string flip(std::string d) {
     }
     return f;
 }
-
 
 std::string rotate(std::string d) {
     std::string r = d;
@@ -67,22 +66,18 @@ std::vector<std::string> get_keys(std::string d) {
     std::vector<std::string> keys;
 
     keys.push_back(d);
+    keys.push_back(rotate180(d));
     d = rotate(d);
     keys.push_back(d);
-    d = rotate(d);
-    keys.push_back(d);
-    d = rotate(d);
-    keys.push_back(d);
+    keys.push_back(rotate180(d));
 
-    d = rotate(d); // back to start
     d = flip(d);
+
     keys.push_back(d);
+    keys.push_back(rotate180(d));
     d = rotate(d);
     keys.push_back(d);
-    d = rotate(d);
-    keys.push_back(d);
-    d = rotate(d);
-    keys.push_back(d);
+    keys.push_back(rotate180(d));
     return keys;
 }
 
@@ -110,26 +105,18 @@ std::vector<std::string> split(const std::string& d, size_t N) {
     return result;
 }
 
-std::string get_line(const std::vector<std::string>& drawings, int lineN, int nparts) {
-    std::ostringstream line;
-    int dN = get_size(drawings[0]);
-    int i = lineN % dN;
-    for (int n = lineN / dN * nparts; nparts--; ++n) {
-        line << drawings[n].substr(i*dN, dN);
-    }
-    return line.str();
-}
-
 std::string combine(const std::vector<std::string>& drawings, int nparts) {
     if (nparts == 1) return drawings[0];
 
-    std::ostringstream hashed;
+    std::ostringstream combined;
     int dN = get_size(drawings[0]);
     for (int i = 0; i < nparts * dN; ++i) {
-        auto line = get_line(drawings, i, nparts);
-        hashed << line;
+        int ii = i % dN;
+        for (int n = i / dN * nparts, times = nparts; times--; ++n) {
+            combined << drawings[n].substr(ii*dN, dN);
+        }
     }
-    return hashed.str();
+    return combined.str();
 }
 
 int get_split_size(int size, int divBy) {
