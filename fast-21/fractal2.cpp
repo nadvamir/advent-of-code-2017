@@ -158,22 +158,24 @@ std::string iteration(Rulebook& rulebook, std::string in, int divBy) {
     int splitSize = get_split_size(inSize, divBy);
 
     auto s = split(in, splitSize);
-    transform(begin(s), end(s), begin(s), [&](const auto& d) {
-            auto t1 = std::chrono::high_resolution_clock::now();
-            const auto ruleIt = rulebook.find(d);
-            auto t2 = std::chrono::high_resolution_clock::now();
-            t_rulebook_find += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-            if (ruleIt != end(rulebook)) {
-                return ruleIt->second;
-            }
-            else {
-                return iteration(rulebook, d, divBy);
-            }
-    });
+
+    for (auto& d: s) {
+        auto t1 = std::chrono::high_resolution_clock::now();
+        const auto ruleIt = rulebook.find(d);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        t_rulebook_find += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+
+        if (ruleIt != end(rulebook)) {
+            d = ruleIt->second;
+        }
+        else {
+            d = iteration(rulebook, std::move(d), divBy);
+        }
+    };
 
     const auto combined = combine(s, inSize / splitSize);
     auto t1 = std::chrono::high_resolution_clock::now();
-    rulebook.insert({in, combined});
+    rulebook.insert({std::move(in), combined});
     auto t2 = std::chrono::high_resolution_clock::now();
     t_rulebook_insert += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     return combined;
